@@ -1,0 +1,70 @@
+{% macro resource_cards(items) %}
+<div class="resource-grid">
+  {% for item in items %}
+  <article class="resource">
+    <div class="resource-top"><span class="resource-kind">{{ item.kind|default('E-Book') }}</span><span class="resource-category">{{ item.category }}</span></div>
+    <h3>{{ item.title }}</h3><p class="byline">{{ item.author }}</p><p>{{ item.description }}</p>
+    <div class="resource-bottom"><span>{{ item.source }}{% if item.duration is defined %} · {{ item.duration }}{% endif %}</span><a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">{{ 'Listen' if item.kind == 'Audio Book' else 'Read' }} ↗</a></div>
+  </article>
+  {% else %}<p class="empty">No resources match those filters.</p>{% endfor %}
+</div>
+{% endmacro %}
+
+{% macro survey_form(options) %}
+<form class="survey-form" action="{{ url_for('survey') }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <fieldset><legend>1. What is your age group?</legend>{% for option in options.age_group %}<label><input type="radio" name="age_group" value="{{ option }}" required> {{ option }}</label>{% endfor %}</fieldset>
+  <fieldset><legend>2. What is your current education level?</legend>{% for option in options.education %}<label><input type="radio" name="education" value="{{ option }}" required> {{ option }}</label>{% endfor %}</fieldset>
+  <fieldset><legend>3. What type of learning resources do you use most often?</legend>{% for option in options.resource_use %}<label><input type="radio" name="resource_use" value="{{ option }}" required> {{ option }}</label>{% endfor %}</fieldset>
+  <fieldset><legend>4. What problems do you face while accessing educational resources?</legend>{% for option in options.problems %}<label><input type="checkbox" name="problems" value="{{ option }}"> {{ option }}</label>{% endfor %}</fieldset>
+  <fieldset><legend>5. Which device do you mainly use?</legend>{% for option in options.device %}<label><input type="radio" name="device" value="{{ option }}" required> {{ option }}</label>{% endfor %}</fieldset>
+  <fieldset><legend>6. Would you use a digital library at your community center?</legend>{% for option in options.interest %}<label><input type="radio" name="interest" value="{{ option }}" required> {{ option }}</label>{% endfor %}</fieldset>
+  <fieldset><legend>7. Which feature would be most useful?</legend>{% for option in options.feature %}<label><input type="radio" name="feature" value="{{ option }}" required> {{ option }}</label>{% endfor %}</fieldset>
+  <fieldset><legend>8. Feedback</legend><label for="survey-feedback">Please provide a suggestion to improve the community digital library.</label><textarea id="survey-feedback" name="feedback" rows="4" maxlength="2000" required></textarea></fieldset>
+  <button class="button" type="submit">Submit survey</button>
+</form>
+{% endmacro %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page == 'account' %}{{ 'Create account' if mode == 'register' else 'Log in' }}{% elif page == 'library' %}Library{% elif page == 'survey' %}Community survey{% elif page == 'comparison' %}Library comparison{% else %}Community Digital Library · G-37{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="{{ url_for('home') }}"><span class="brand-mark">DL</span> Community Library</a>
+  <nav class="desktop-nav" aria-label="Main navigation">
+    <a href="{{ url_for('home') }}">Home</a><a href="{{ url_for('library') }}">Library</a><a href="{{ url_for('survey') }}">Survey</a><a href="{{ url_for('comparison') }}">Library comparison</a>
+    {% if current_user %}<span class="signed-in">{{ current_user.name }}</span><form action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="nav-button">Log out</button></form>{% else %}<a href="{{ url_for('account', mode='login') }}">Log in</a>{% endif %}
+  </nav>
+  <details class="mobile-nav"><summary>Menu</summary><nav aria-label="Mobile navigation"><a href="{{ url_for('home') }}">Home</a><a href="{{ url_for('library') }}">Library</a><a href="{{ url_for('survey') }}">Survey</a><a href="{{ url_for('comparison') }}">Library comparison</a>{% if current_user %}<form action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="nav-button">Log out</button></form>{% else %}<a href="{{ url_for('account', mode='login') }}">Log in</a>{% endif %}</nav></details>
+</header>
+<main id="main">
+  {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="messages" role="status">{% for kind, message in messages %}<p class="message message-{{ kind }}">{{ message }}</p>{% endfor %}</div>{% endif %}{% endwith %}
+  {% if page == 'account' %}
+  <section class="account-layout"><div class="account-intro"><p class="eyebrow">G-37 · TYIT community project</p><h1>{{ 'Your community library starts here.' if mode == 'register' else 'Welcome back.' }}</h1><p>Find free books and audio learning resources in one simple place.</p></div><div class="account-form"><p class="eyebrow">{{ 'First visit' if mode == 'register' else 'Returning member' }}</p><h2>{{ 'Create account' if mode == 'register' else 'Log in' }}</h2>
+    <form action="{{ url_for('account', mode=mode) }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="mode" value="{{ mode }}">
+      {% if mode == 'register' %}<label for="name">Full name</label><input id="name" name="name" autocomplete="name" maxlength="100" required><label for="study_field">What are you studying?</label><input id="study_field" name="study_field" placeholder="Course or subject" maxlength="120" required><label for="education_level">Academic level</label><select id="education_level" name="education_level" required><option value="">Select a level</option>{% for level in education_levels %}<option value="{{ level }}">{{ level }}</option>{% endfor %}</select><label for="institution">School or college <span class="optional">(optional)</span></label><input id="institution" name="institution" maxlength="150">{% endif %}
+      <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" minlength="{{ 8 if mode == 'register' else 1 }}" required>{% if mode == 'register' %}<label for="confirm_password">Confirm password</label><input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" required>{% endif %}<button class="button" type="submit">{{ 'Create account' if mode == 'register' else 'Log in' }}</button>
+    </form><p class="switch-mode">{% if mode == 'register' %}Already have an account? <a href="{{ url_for('account', mode='login') }}">Log in</a>{% else %}New here? <a href="{{ url_for('account', mode='register') }}">Create an account</a>{% endif %}</p>
+  </div></section>
+  {% elif page == 'home' %}
+  <section class="hero"><div><p class="eyebrow">G-37 · TYIT Community Project</p><h1>Your Community's<br>Digital Library</h1><p class="hero-text">Discover free books and audio books for learning, reading, and listening.</p><a class="button" href="{{ url_for('library') }}">Browse the library</a></div><div class="hero-note"><span>↗</span><p>Simple access to trusted, free resources from Project Gutenberg, OpenStax, and LibriVox.</p></div></section>
+  <section class="stats"><div><strong>{{ data.books|length }}</strong><span>Books</span></div><div><strong>{{ data.audio_books|length }}</strong><span>Audio books</span></div><div><strong>{{ data.surveys|length }}</strong><span>Survey responses</span></div></section>
+  <section class="content-section"><div class="section-title"><div><p class="eyebrow">A few places to begin</p><h2>Featured books</h2></div><a href="{{ url_for('library') }}">All resources →</a></div>{{ resource_cards(data.books|selectattr('featured')|list) }}</section>
+  <section class="content-section survey-home"><div class="section-title"><div><p class="eyebrow">Community input</p><h2>Help us improve the library</h2><p>This short survey is optional and does not require an account.</p></div><a href="{{ url_for('survey') }}">Open survey page →</a></div>{{ survey_form(survey_options) }}</section>
+  {% elif page == 'library' %}
+  <section class="page-heading"><p class="eyebrow">Books and listening</p><h1>Library</h1><p>All links open the original resource provider in a new tab.</p></section>
+  <section class="library-layout"><form class="filters" action="{{ url_for('library') }}" method="get"><label for="q">Search title, author, or subject</label><input id="q" name="q" type="search" value="{{ filters.q }}" placeholder="Try a title or author"><label for="category">Category</label><select id="category" name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category }}" {{ 'selected' if filters.category == category }}>{{ category }}</option>{% endfor %}</select><label for="type">Resource type</label><select id="type" name="type"><option value="">All resources</option><option value="E-Book" {{ 'selected' if filters.type == 'E-Book' }}>E-Book</option><option value="Audio Book" {{ 'selected' if filters.type == 'Audio Book' }}>Audio Book</option></select><div class="filter-actions"><button class="button" type="submit">Search</button><a href="{{ url_for('library') }}">Clear</a></div></form><div><p class="result-count">{{ resources|length }} resources</p>{{ resource_cards(resources) }}</div></section>
+  {% elif page == 'survey' %}
+  <section class="page-heading"><p class="eyebrow">Optional · No account required</p><h1>Community survey</h1><p>Your responses help us choose useful learning resources.</p></section><section class="content-section">{{ survey_form(survey_options) }}</section>
+  {% elif page == 'comparison' %}
+  <section class="page-heading"><p class="eyebrow">Two useful ways to learn</p><h1>Normal Library vs Digital Library</h1><p>A digital collection can complement a community center's physical library; it does not replace it.</p></section>
+  <section class="content-section"><div class="table-wrap"><table><thead><tr><th>Feature</th><th>Normal library</th><th>Digital library</th></tr></thead><tbody><tr><th>Access</th><td>Visit a physical location during opening hours.</td><td>Open resources online when you have a device and connection.</td></tr><tr><th>Search</th><td>Browse shelves or ask library staff.</td><td>Search by title, author, and category.</td></tr><tr><th>Storage</th><td>Printed books and local shelves.</td><td>Links and files hosted by resource providers.</td></tr><tr><th>Availability</th><td>Depends on location, hours, and available copies.</td><td>Depends on internet access and provider availability.</td></tr><tr><th>Community</th><td>Offers shared study space and in-person help.</td><td>Offers remote access, but requires a device and connectivity.</td></tr></tbody></table></div><p class="note">Both formats have strengths and limits. This project is intended to support the community center's existing library.</p></section>
+  {% else %}<section class="page-heading"><p class="eyebrow">{{ code }}</p><h1>{{ message }}</h1><a class="button" href="{{ url_for('home') }}">Return</a></section>{% endif %}
+</main>
+<footer class="site-footer"><strong>Digital Library for Community Centers</strong><span>G-37 · TYIT Community Project · © 2026</span></footer>
+</body>
+</html>
